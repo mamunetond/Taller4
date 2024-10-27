@@ -1,0 +1,70 @@
+name: Run Tests
+
+on: 
+  push: 
+    branches: 
+      - main 
+  pull_request: 
+    branches: 
+      - main 
+
+env: 
+  REPO_URL: https://github.com/mamunetond/Taller4
+  WORKING_DIR: Taller4 
+
+jobs: 
+  run-tests: 
+    runs-on: ubuntu-latest 
+    steps: 
+      - name: Checkout Flask app repo 
+        uses: actions/checkout@v3 
+
+      - name: Set up Python 
+        uses: actions/setup-python@v4 
+        with: 
+          python-version: '3.11' 
+
+      - name: Install Flask app dependencies 
+        run: | 
+          python -m venv venv 
+          source venv/bin/activate 
+          pip install -r requirements.txt 
+
+      - name: Run Flask app 
+        run: | 
+          source venv/bin/activate 
+          flask initdb 
+          flask translate compile 
+          nohup flask run > flask.log 2>&1 & 
+
+      - name: Checkout tests repo 
+        run: git clone https://github.com/mamunetond/Taller4.git 
+
+      - name: Setup Node 
+        uses: actions/setup-node@v4 
+        with: 
+          node-version: lts/*
+
+      - name: Install dependencies 
+        run: | 
+          cd Taller4 
+          npm ci 
+
+      - name: Install Playwright Browsers 
+        run: npx playwright install --with-deps 
+
+      - name: Run Playwright tests 
+        run: | 
+          cd Taller4 
+          npx playwright test todolist.spec.ts 
+
+      - name: List files in playwright-report
+        run: ls -la Taller4/playwright-report/
+
+      - name: Upload Artifact 
+        uses: actions/upload-artifact@v4 
+        if: ${{ !cancelled() }} 
+        with: 
+          name: Taller4 
+          path: Taller4/playwright-report/ 
+          retention-days: 30
